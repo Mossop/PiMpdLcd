@@ -64,7 +64,7 @@ class Display(OutputDevice):
     def on(self):
         OutputDevice.on(self)
         if not self._timer:
-            self._timer = Timer(SCROLL_TIME, self._update_scroll)
+            self._timer = Timer(SCROLL_TIME, self._update_display)
             self._timer.start()
 
     def off(self):
@@ -74,19 +74,27 @@ class Display(OutputDevice):
             self._timer = None
         OutputDevice.off(self)
 
-    def _update_scroll(self):
+    def _update_display(self):
         self._timer = None
 
-        self._line1pos = self._line1pos + self._line1dir
-        self._line2pos = self._line2pos + self._line2dir
-        self._line1dir = next_dir(self._line1, self._line1pos, self._line1dir)
-        self._line2dir = next_dir(self._line2, self._line2pos, self._line2dir)
+        if len(self._line1) <= WIDTH:
+            line1 = center(self._line1)
+        else:
+            self._line1pos = self._line1pos + self._line1dir
+            self._line1dir = next_dir(self._line1, self._line1pos, self._line1dir)
+            line1 = build_line(self._line1, self._line1pos)
 
-        self._timer = Timer(SCROLL_TIME, self._update_scroll)
+        if len(self._line2) <= WIDTH:
+            line2 = center(self._line2)
+        else:
+            self._line2pos = self._line2pos + self._line2dir
+            self._line2dir = next_dir(self._line2, self._line2pos, self._line2dir)
+            line2 = build_line(self._line2, self._line2pos)
+
+        self._timer = Timer(SCROLL_TIME, self._update_display)
         self._timer.start()
 
-        self.display(build_line(self._line1, self._line1pos),
-                     build_line(self._line2, self._line2pos))
+        self.display(line1, line2)
 
     def _update(self):
         line1 = self._song["title"]
@@ -107,7 +115,7 @@ class Display(OutputDevice):
 
         if self._timer:
             self._timer.cancel()
-        self._update_scroll()
+        self._update_display()
 
     def set_status(self, value):
         if value == "stop":
