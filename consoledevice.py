@@ -232,6 +232,9 @@ class OutputDevice(Console):
         if not self.active:
             self.on()
 
+        line1 = line1[:16]
+        line2 = line2[:16]
+
         self.go_up(3)
         self.go_right(1)
         self.set_color(self.RED)
