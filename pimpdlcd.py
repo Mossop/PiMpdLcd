@@ -13,51 +13,55 @@ PASSWORD = False
 
 WIDTH = 16
 SCROLL_TIME = 1
+SCROLL_SHORT = False
 
-def center(str):
-    while len(str) < (WIDTH - 1):
-        str = " " + str + " "
-    if len(str) < WIDTH:
-        str = str + " "
-    return str
+class Line(object):
+    def __init__(self, str):
+        self._str = str
+        self._pos = 0
+        self._dir = 0
 
-def build_line(str, pos):
-    if len(str) == WIDTH:
-        return str
+    def update(self):
+        self._pos = self._pos + self._dir
 
-    if len(str) < WIDTH:
-        line = "".ljust(pos) + str
-        return line.ljust(WIDTH)
+        if len(self._str) == WIDTH:
+            self._dir = 0
+        elif self._dir == 0:
+            self._dir = 1
+        elif len(self._str) < WIDTH:
+            if self._dir > 0 and (len(self._str) + self._pos) == WIDTH:
+                self._dir = -1
+            elif self._dir < 0 and self._pos == 0:
+                self._dir = 1
+        else:
+            if self._dir > 0 and len(self._str) - self._pos == WIDTH:
+                self._dir = -1
+            elif self._dir < 0 and self._pos == 0:
+                self._dir = 1
 
-    return str[pos:pos + WIDTH]
+    @property
+    def raw(self):
+        return self._str
 
-def next_dir(str, pos, dir):
-    if len(str) == WIDTH:
-        return 0
+    def __str__(self):
+        if len(self._str) == WIDTH:
+            return self._str
 
-    if dir == 0:
-        return 1
+        if len(self._str) < WIDTH:
+            if not SCROLL_SHORT:
+                return self._str.center(WIDTH)
+            line = "".ljust(self._pos) + self._str
+            return line.ljust(WIDTH)
 
-    if len(str) < WIDTH:
-        if dir > 0 and (len(str) + pos) == WIDTH:
-            dir = -1
-        elif dir < 0 and pos == 0:
-            dir = 1
-    else:
-        if dir > 0 and len(str) - pos == WIDTH:
-            dir = -1
-        elif dir < 0 and pos == 0:
-            dir = 1
-
-    return dir
+        return self._str[self._pos:self._pos + WIDTH]
 
 class Display(OutputDevice):
     def __init__(self):
         self._status = "stop"
         self._song = {}
         self._timer = None
-        self._line1 = ""
-        self._line2 = ""
+        self._line1 = Line("")
+        self._line2 = Line("")
 
         OutputDevice.__init__(self)
 
@@ -76,25 +80,13 @@ class Display(OutputDevice):
 
     def _update_display(self):
         self._timer = None
-
-        if len(self._line1) <= WIDTH:
-            line1 = center(self._line1)
-        else:
-            self._line1pos = self._line1pos + self._line1dir
-            self._line1dir = next_dir(self._line1, self._line1pos, self._line1dir)
-            line1 = build_line(self._line1, self._line1pos)
-
-        if len(self._line2) <= WIDTH:
-            line2 = center(self._line2)
-        else:
-            self._line2pos = self._line2pos + self._line2dir
-            self._line2dir = next_dir(self._line2, self._line2pos, self._line2dir)
-            line2 = build_line(self._line2, self._line2pos)
+        self._line1.update()
+        self._line2.update()
 
         self._timer = Timer(SCROLL_TIME, self._update_display)
         self._timer.start()
 
-        self.display(line1, line2)
+        self.display(str(self._line1), str(self._line2))
 
     def _update(self):
         line1 = self._song["title"]
@@ -103,15 +95,11 @@ class Display(OutputDevice):
         else:
             line2 = self._song["artist"]
 
-        if line1 != self._line1:
-            self._line1 = line1
-            self._line1pos = 0
-            self._line1dir = 0
+        if line1 != self._line1.raw:
+            self._line1 = Line(line1)
 
-        if line2 != self._line2:
-            self._line2 = line2
-            self._line2pos = 0
-            self._line2dir = 0
+        if line2 != self._line2.raw:
+            self._line2 = Line(line2)
 
         if self._timer:
             self._timer.cancel()
