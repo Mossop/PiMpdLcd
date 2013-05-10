@@ -10,19 +10,48 @@ HOST = 'officepi'
 PORT = '6600'
 PASSWORD = False
 
-output = OutputDevice()
-client = MPDClient()
+def center(str):
+    while len(str) < 15:
+        str = " " + str + " "
+    if len(str) < 16:
+        str = str + " "
+    return str
 
-def update_status(client):
-    status = client.status()
-    if status["state"] == "stop":
-        output.display("STOPPED")
-        return
-    song = client.currentsong()
-    if status["state"] == "pause":
-        output.display(song["title"], "PAUSED")
-    else:
-        output.display(song["title"], song["artist"])
+class Display(OutputDevice):
+    def __init__(self):
+        OutputDevice.__init__(self)
+
+        self._status = "stop"
+        self._song = {}
+
+    def off(self):
+        self._status = "stop"
+        OutputDevice.off(self)
+
+    def _update(self):
+        self._line1 = center(self._song["title"])
+        if self._status == "pause":
+            self._line2 = center("PAUSED")
+        else:
+            self._line2 = center(self._song["artist"])
+        self._line1pos = 0
+        self._line2pos = 0
+        self.display(self._line1, self._line2)
+
+    def set_status(self, value):
+        if value == "stop":
+            self.off()
+            return
+
+        self._status = value
+        self._update()
+
+    def set_song(self, value):
+        self._song = value
+        self._update()
+
+output = Display()
+client = MPDClient()
 
 def main():
     global client
@@ -34,7 +63,11 @@ def main():
         client.password(PASSWORD)
 
     while True:
-        update_status(client)
+        status = client.status()
+        if status["state"] != "stop":
+            output.set_song(client.currentsong())
+        output.set_status(status["state"])
+
         client.send_idle()
         select([client], [] ,[])
         client.fetch_idle()
@@ -46,4 +79,3 @@ if __name__ == "__main__":
             main()
         except:
             output.off()
-            pass
