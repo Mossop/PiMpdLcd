@@ -20,8 +20,19 @@ class Line(object):
         self._str = str
         self._pos = 0
         self._dir = 0
+        self._override = None
+        self._overridden = False
+
+    def override(self, str):
+        self._override = str
+        self._overridden = False
 
     def update(self):
+        if self._override:
+            self._overridden = not self._overridden
+            if self._overridden:
+                return
+
         self._pos = self._pos + self._dir
 
         if len(self._str) == WIDTH:
@@ -44,6 +55,9 @@ class Line(object):
         return self._str
 
     def __str__(self):
+        if self._overridden:
+            return self._override.center(WIDTH)
+
         if len(self._str) == WIDTH:
             return self._str
 
@@ -90,16 +104,18 @@ class Display(OutputDevice):
 
     def _update(self):
         line1 = self._song["title"]
-        if self._status == "pause":
-            line2 = "PAUSED"
-        else:
-            line2 = self._song["artist"]
+        line2 = self._song["artist"]
 
         if line1 != self._line1.raw:
             self._line1 = Line(line1)
 
         if line2 != self._line2.raw:
             self._line2 = Line(line2)
+
+        if self._status == "pause":
+            self._line2.override("PAUSED")
+        else:
+            self._line2.override(None)
 
         if self._timer:
             self._timer.cancel()
