@@ -11,8 +11,10 @@ class OutputDevice(object):
         self.lcd.backlight(self.lcd.RED)
 
     def off(self):
-        self.lcd.stop()
-        self.lcd = None
+        if self.lcd:
+            self.lcd.clear()
+            self.lcd.stop()
+            self.lcd = None
 
     def display(self, line1 = None, line2 = None):
         if not self.lcd:
