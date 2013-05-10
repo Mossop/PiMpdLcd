@@ -5,9 +5,9 @@ from threading import Timer
 from shared import *
 
 try:
-    from lcddevice import OutputDevice
+    from lcddevice import Device
 except:
-    from consoledevice import OutputDevice
+    from consoledevice import Device
 
 HOST = 'officepi'
 PORT = '6600'
@@ -15,6 +15,9 @@ PASSWORD = False
 
 SCROLL_TIME = 1
 SCROLL_SHORT = False
+
+POLL_STATUS_TIME = 1
+POLL_BUTTON_TIME = 0.1
 
 class Line(object):
     def __init__(self, str):
@@ -70,7 +73,7 @@ class Line(object):
 
         return self._str[self._pos:self._pos + WIDTH]
 
-class Display(OutputDevice):
+class Display(Device):
     def __init__(self):
         self._status = "stop"
         self._song = {}
@@ -78,10 +81,10 @@ class Display(OutputDevice):
         self._line1 = Line("")
         self._line2 = Line("")
 
-        OutputDevice.__init__(self)
+        Device.__init__(self)
 
     def on(self):
-        OutputDevice.on(self)
+        Device.on(self)
         if not self._timer:
             self._timer = Timer(SCROLL_TIME, self._update_display)
             self._timer.start()
@@ -91,7 +94,7 @@ class Display(OutputDevice):
         if self._timer:
             self._timer.cancel()
             self._timer = None
-        OutputDevice.off(self)
+        Device.off(self)
 
     def _update_display(self):
         self._timer = None
@@ -103,9 +106,12 @@ class Display(OutputDevice):
 
         self.display(self._line1, self._line2)
 
-    def _update(self):
+    def _update(self, forceupdate = False):
         line1 = self._song["title"]
         line2 = self._song["artist"]
+
+        if not forceupdate and self._line1.raw == line1 and self._line2.raw == line2:
+            return
 
         if line1 != self._line1.raw:
             self._line1 = Line(line1)
@@ -113,54 +119,97 @@ class Display(OutputDevice):
         if line2 != self._line2.raw:
             self._line2 = Line(line2)
 
-        if self._status == "pause":
-            self._line2.override("PAUSED")
-        else:
-            self._line2.override(None)
-
         if self._timer:
             self._timer.cancel()
         self._update_display()
 
     def set_status(self, value):
+        if value == self._status:
+            return
+
         if value == "stop":
             self.off()
             return
 
+        if self._status == "stop":
+            self._update(True)
+
+        if value == "pause":
+            self._line2.override("PAUSED")
+        else:
+            self._line2.override(None)
+
         self._status = value
-        self._update()
 
     def set_song(self, value):
+        if value == self._song:
+            return
+
         self._song = value
-        self._update()
+        if self._status != "stop":
+            self._update()
 
 output = Display()
-output.color(BLUE)
-client = MPDClient()
 
-def main():
-    global client
+class Monitor(object):
+    def __init__(self):
+        self.color = RED
+        output.color(self.color)
 
-    client = MPDClient()
-    client.connect(host = HOST, port = PORT)
-    # Auth if password is set non False
-    if PASSWORD:
-        client.password(PASSWORD)
+        self.client = MPDClient()
+        self.client.connect(host = HOST, port = PORT)
+        if PASSWORD:
+            self.client.password(PASSWORD)
 
-    while True:
-        status = client.status()
-        if status["state"] != "stop":
-            output.set_song(client.currentsong())
-        output.set_status(status["state"])
+        self.poll_buttons()
+        self.update_status()
 
-        client.send_idle()
-        select([client], [] ,[])
-        client.fetch_idle()
+    def poll_buttons(self):
+        try:
+            buttons = output.get_buttons()
+            for button in buttons:
+                if button == SELECT:
+                    self.color = self.color + 1
+                    if self.color > WHITE:
+                        self.color = RED
+                    output.color(self.color)
+                elif button == UP:
+                    status = self.client.status()["state"]
+                    if status == "play":
+                        self.client.pause()
+                    else:
+                        self.client.play()
+                elif button == DOWN:
+                    self.client.stop()
+                elif button == LEFT:
+                    self.client.previous()
+                elif button == RIGHT:
+                    self.client.next()
+        except:
+            pass
+
+        self.polltimer = Timer(POLL_BUTTON_TIME, self.poll_buttons)
+        self.polltimer.start()
+
+    def update_status(self):
+        try:
+            status = self.client.status()
+            if status["state"] != "stop":
+                output.set_song(self.client.currentsong())
+            output.set_status(status["state"])
+
+            self.statustimer = Timer(POLL_STATUS_TIME, self.update_status)
+            self.statustimer.start()
+        except:
+            self.polltimer.cancel()
+            init_monitor()
+
+def init_monitor():
+    try:
+        Monitor()
+    except:
+        init_monitor()
 
 # Script starts here
 if __name__ == "__main__":
-    while True:
-        try:
-            main()
-        except:
-            output.off()
+    init_monitor()

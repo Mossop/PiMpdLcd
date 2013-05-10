@@ -2,10 +2,46 @@ from adafruit.Adafruit_CharLCDPlate import Adafruit_CharLCDPlate
 
 from shared import *
 
-class OutputDevice(object):
+BUTTONS = [
+    SELECT,
+    UP,
+    DOWN,
+    LEFT,
+    RIGHT
+]
+
+class Device(threading.Thread):
     def __init__(self):
+        self.lock = threading.Lock()
+        threading.Thread.__init__(self)
+        self.daemon = True
+
         self.lcd = None
         self._color = RED
+        self._buttons = []
+
+        self.start()
+
+    def run(self):
+        lastbuttons = 0
+        while True:
+            buttons = self.lcd.buttons()
+
+            for button in BUTTONS:
+                button = 1 << button
+                if (lastbuttons & button) and not (buttons & button):
+                    self.lock.acquire()
+                    self._buttons.append(button)
+                    self.lock.release()
+
+            lastbuttons = buttons
+
+    def get_buttons(self):
+        self.lock.acquire()
+        buttons = self._buttons
+        self._buttons = []
+        self.lock.release()
+        return buttons
 
     def color(self, color):
         if self.lcd:

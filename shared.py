@@ -7,4 +7,10 @@ MAGENTA = 5
 CYAN = 6
 WHITE = 7
 
+SELECT = 0
+RIGHT = 1
+DOWN = 2
+UP = 3
+LEFT = 4
+
 WIDTH = 16

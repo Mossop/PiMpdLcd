@@ -1,8 +1,9 @@
-import os, sys
+import os, sys, threading
 
 from shared import *
 
 if os.name == "nt":
+    import msvcrt
     from ctypes import windll, Structure, c_short, byref, create_unicode_buffer
     from ctypes.wintypes import WORD, DWORD, WCHAR, LPCWSTR
 
@@ -140,6 +141,23 @@ if os.name == "nt":
             title = create_unicode_buffer(1024)
             GetConsoleOriginalTitle(title, 1024)
             SetConsoleTitle(title)
+
+        def get_keypressed(self):
+            str = ""
+            while msvcrt.kbhit():
+                str = str + msvcrt.getch()
+            if str == " ":
+                return SELECT
+            if len(str) != 2 or ord(str[0]) != 224:
+                return None
+            if str[1] == "H":
+                return UP
+            if str[1] == "M":
+                return RIGHT
+            if str[1] == "P":
+                return DOWN
+            if str[1] == "K":
+                return LEFT
 else:
     class Console:
         fp = None
@@ -194,16 +212,45 @@ else:
         def clear_title(self):
             self.set_title("")
 
-class OutputDevice(Console):
+        def get_keypressed(self):
+            return None
+
+class Device(threading.Thread):
     def __init__(self):
-        Console.__init__(self, sys.stdout)
+        self.lock = threading.Lock()
+        threading.Thread.__init__(self)
+        self.daemon = True
+
+        self._console = Console(sys.stdout)
         self._color = RED
-        self.set_color(WHITE)
+        self._buttons = []
+
+        self._console.set_color(WHITE)
         print("+" + "".ljust(WIDTH, "-") + "+")
         print("|" + "".ljust(WIDTH) + "|")
         print("|" + "".ljust(WIDTH) + "|")
         print("+" + "".ljust(WIDTH, "-") + "+")
         self.off()
+
+        self.start()
+
+    def run(self):
+        while True:
+            try:
+                key = self._console.get_keypressed()
+                if key is not None:
+                    self.lock.acquire()
+                    self._buttons.append(key)
+                    self.lock.release()
+            except:
+                pass
+
+    def get_buttons(self):
+        self.lock.acquire()
+        buttons = self._buttons
+        self._buttons = []
+        self.lock.release()
+        return buttons
 
     def color(self, color):
         self._color = color
@@ -214,32 +261,32 @@ class OutputDevice(Console):
 
     def off(self):
         self.active = False
-        self.go_up(3)
-        self.go_right(1)
-        self.set_color(WHITE)
+        self._console.go_up(3)
+        self._console.go_right(1)
+        self._console.set_color(WHITE)
         print("".ljust(WIDTH, "#"))
-        self.go_right(1)
+        self._console.go_right(1)
         print("".ljust(WIDTH, "#"))
-        self.go_down(1)
-        self.reset_color()
+        self._console.go_down(1)
+        self._console.reset_color()
 
     def display(self, line1 = None, line2 = None):
         if not self.active:
             self.on()
 
-        self.go_up(3)
-        self.go_right(1)
-        self.set_color(self._color)
+        self._console.go_up(3)
+        self._console.go_right(1)
+        self._console.set_color(self._color)
         if line1 is not None:
             print(str(line1)[:WIDTH].ljust(WIDTH))
-            self.go_right(1)
+            self._console.go_right(1)
         else:
-            self.go_down(1)
+            self._console.go_down(1)
         if line2 is not None:
             print(str(line2)[:WIDTH].ljust(WIDTH))
-            self.go_right(1)
+            self._console.go_right(1)
         else:
-            self.go_down(1)
-        self.go_down(1)
-        self.go_left(1)
-        self.reset_color()
+            self._console.go_down(1)
+        self._console.go_down(1)
+        self._console.go_left(1)
+        self._console.reset_color()
