@@ -10,38 +10,25 @@ BUTTONS = [
     RIGHT
 ]
 
-class Device(threading.Thread):
+class Device(object):
     def __init__(self):
-        self.lock = threading.Lock()
-        threading.Thread.__init__(self)
-        self.daemon = True
-
         self.lcd = None
         self._color = RED
-        self._buttons = []
-
-        self.start()
-
-    def run(self):
-        lastbuttons = 0
-        while True:
-            buttons = self.lcd.buttons()
-
-            for button in BUTTONS:
-                button = 1 << button
-                if (lastbuttons & button) and not (buttons & button):
-                    self.lock.acquire()
-                    self._buttons.append(button)
-                    self.lock.release()
-
-            lastbuttons = buttons
+        self._lastbuttons = 0
 
     def get_buttons(self):
-        self.lock.acquire()
-        buttons = self._buttons
-        self._buttons = []
-        self.lock.release()
-        return buttons
+        if not self.lcd:
+            return []
+
+        pressed = []
+        buttons = self.lcd.buttons()
+        for button in BUTTONS:
+            button = 1 << button
+            if (self._lastbuttons & button) and not (buttons & button):
+                pressed.append(button)
+
+        self._lastbuttons = buttons
+        return pressed
 
     def color(self, color):
         if self.lcd:
@@ -49,16 +36,20 @@ class Device(threading.Thread):
         self._color = color
 
     def on(self):
+        self.lock.acquire()
         self.lcd = Adafruit_CharLCDPlate()
         self.lcd.begin(WIDTH, 2)
         self.lcd.clear()
         self.lcd.backlight(self._color)
+        self.lock.release()
 
     def off(self):
+        self.lock.acquire()
         if self.lcd:
             self.lcd.clear()
             self.lcd.stop()
             self.lcd = None
+        self.lock.release()
 
     def display(self, line1 = None, line2 = None):
         if not self.lcd:
