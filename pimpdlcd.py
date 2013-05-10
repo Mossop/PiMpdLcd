@@ -1,18 +1,17 @@
-import pprint
-
 from select import select
 from mpd import MPDClient
 
 try:
-    from lcddevice import Output
+    from lcddevice import OutputDevice
 except:
-    from consoledevice import Output
+    from consoledevice import OutputDevice
 
 HOST = 'officepi'
 PORT = '6600'
 PASSWORD = False
 
-output = Output()
+output = OutputDevice()
+client = MPDClient()
 
 def update_status(client):
     status = client.status()
@@ -26,23 +25,25 @@ def update_status(client):
         output.display(song["title"], song["artist"])
 
 def main():
-    ## MPD object instance
+    global client
+
     client = MPDClient()
     client.connect(host = HOST, port = PORT)
+    # Auth if password is set non False
+    if PASSWORD:
+        client.password(PASSWORD)
 
-    try:
-        # Auth if password is set non False
-        if PASSWORD:
-            client.password(PASSWORD)
-
-        while True:
-            update_status(client)
-            client.send_idle()
-            select([client], [] ,[])
-            client.fetch_idle()
-    finally:
-        client.disconnect()
+    while True:
+        update_status(client)
+        client.send_idle()
+        select([client], [] ,[])
+        client.fetch_idle()
 
 # Script starts here
 if __name__ == "__main__":
-    main()
+    while True:
+        try:
+            main()
+        except:
+            output.off()
+            pass
