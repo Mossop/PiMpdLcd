@@ -1,5 +1,7 @@
 import os, sys
 
+from shared import *
+
 if os.name == "nt":
     from ctypes import windll, Structure, c_short, byref, create_unicode_buffer
     from ctypes.wintypes import WORD, DWORD, WCHAR, LPCWSTR
@@ -42,14 +44,9 @@ if os.name == "nt":
     GetConsoleOriginalTitle = windll.kernel32.GetConsoleOriginalTitleW
 
     class Console:
-        BLACK = 0
         RED = 4
         GREEN = 2
-        YELLOW = 6
         BLUE = 1
-        MAGENTA = 5
-        CYAN = 3
-        WHITE = 7
 
         fp = None
         handle = None
@@ -62,6 +59,16 @@ if os.name == "nt":
             csbi = CONSOLE_SCREEN_BUFFER_INFO()
             GetConsoleScreenBufferInfo(self.handle, byref(csbi))
             self.default = csbi.wAttributes
+
+        def _translate_color(self, color):
+            newcolor = BLACK
+            if color & RED:
+                newcolor = newcolor + self.RED
+            if color & GREEN:
+                newcolor = newcolor + self.GREEN
+            if color & BLUE:
+                newcolor = newcolor + self.BLUE
+            return newcolor
 
         def _get_position(self):
             csbi = CONSOLE_SCREEN_BUFFER_INFO()
@@ -122,12 +129,8 @@ if os.name == "nt":
         def reset_color(self):
             SetConsoleTextAttribute(self.handle, self.default)
 
-        def set_color(self, foreground, bright = True, background = None):
-            color = foreground
-            if bright:
-                color |= 8
-            if background:
-                color |= (background * 16)
+        def set_color(self, foreground):
+            color = self._translate_color(foreground) | 8
             SetConsoleTextAttribute(self.handle, color)
 
         def set_title(self, text):
@@ -139,15 +142,6 @@ if os.name == "nt":
             SetConsoleTitle(title)
 else:
     class Console:
-        BLACK = 0
-        RED = 1
-        GREEN = 2
-        YELLOW = 3
-        BLUE = 4
-        MAGENTA = 5
-        CYAN = 6
-        WHITE = 7
-
         fp = None
         pos = 0
 
@@ -188,13 +182,10 @@ else:
         def reset_color(self):
             self.fp.write("\033[0m")
 
-        def set_color(self, foreground, bright = True, background = None):
+        def set_color(self, foreground):
             self.fp.write("\033[")
-            if bright:
-                self.fp.write("1;")
+            self.fp.write("1;")
             self.fp.write(str(foreground + 30))
-            if background is not None:
-                self.fp.write(";%s" % (background + 40))
             self.fp.write("m")
 
         def set_title(self, text):
@@ -204,16 +195,18 @@ else:
             self.set_title("")
 
 class OutputDevice(Console):
-    WIDTH = 16
-
     def __init__(self):
         Console.__init__(self, sys.stdout)
-        self.set_color(self.WHITE)
-        print("+----------------+")
-        print("|                |")
-        print("|                |")
-        print("+----------------+")
+        self._color = RED
+        self.set_color(WHITE)
+        print("+" + "".ljust(WIDTH, "-") + "+")
+        print("|" + "".ljust(WIDTH) + "|")
+        print("|" + "".ljust(WIDTH) + "|")
+        print("+" + "".ljust(WIDTH, "-") + "+")
         self.off()
+
+    def color(self, color):
+        self._color = color
 
     def on(self):
         self.active = True
@@ -223,10 +216,10 @@ class OutputDevice(Console):
         self.active = False
         self.go_up(3)
         self.go_right(1)
-        self.set_color(self.WHITE)
-        print("################")
+        self.set_color(WHITE)
+        print("".ljust(WIDTH, "#"))
         self.go_right(1)
-        print("################")
+        print("".ljust(WIDTH, "#"))
         self.go_down(1)
         self.reset_color()
 
@@ -236,14 +229,14 @@ class OutputDevice(Console):
 
         self.go_up(3)
         self.go_right(1)
-        self.set_color(self.RED)
+        self.set_color(self._color)
         if line1 is not None:
-            print(str(line1)[:self.WIDTH].ljust(self.WIDTH))
+            print(str(line1)[:WIDTH].ljust(WIDTH))
             self.go_right(1)
         else:
             self.go_down(1)
         if line2 is not None:
-            print(str(line2)[:self.WIDTH].ljust(self.WIDTH))
+            print(str(line2)[:WIDTH].ljust(WIDTH))
             self.go_right(1)
         else:
             self.go_down(1)

@@ -1,16 +1,22 @@
 from adafruit.Adafruit_CharLCDPlate import Adafruit_CharLCDPlate
 
-class OutputDevice(object):
-    WIDTH = 16
+from shared import *
 
+class OutputDevice(object):
     def __init__(self):
         self.lcd = None
+        self._color = RED
+
+    def color(self, color):
+        if self.lcd:
+            self.lcd.backlight(color)
+        self._color = color
 
     def on(self):
         self.lcd = Adafruit_CharLCDPlate()
-        self.lcd.begin(self.WIDTH, 2)
+        self.lcd.begin(WIDTH, 2)
         self.lcd.clear()
-        self.lcd.backlight(self.lcd.RED)
+        self.lcd.backlight(self._color)
 
     def off(self):
         if self.lcd:
@@ -23,10 +29,10 @@ class OutputDevice(object):
             self.on()
 
         if line1 is not None:
-            line1 = str(line1).ljust(self.WIDTH)
+            line1 = str(line1).ljust(WIDTH)
             self.lcd.setCursor(0, 0)
             self.lcd.message(line1)
         if line2 is not None:
-            line2 = str(line2).ljust(self.WIDTH)
+            line2 = str(line2).ljust(WIDTH)
             self.lcd.setCursor(0, 1)
             self.lcd.message(line2)

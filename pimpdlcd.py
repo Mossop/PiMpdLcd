@@ -2,6 +2,8 @@ from select import select
 from mpd import MPDClient
 from threading import Timer
 
+from shared import *
+
 try:
     from lcddevice import OutputDevice
 except:
@@ -34,17 +36,17 @@ class Line(object):
 
         self._pos = self._pos + self._dir
 
-        if len(self._str) == output.WIDTH:
+        if len(self._str) == WIDTH:
             self._dir = 0
         elif self._dir == 0:
             self._dir = 1
-        elif len(self._str) < output.WIDTH:
-            if self._dir > 0 and (len(self._str) + self._pos) == output.WIDTH:
+        elif len(self._str) < WIDTH:
+            if self._dir > 0 and (len(self._str) + self._pos) == WIDTH:
                 self._dir = -1
             elif self._dir < 0 and self._pos == 0:
                 self._dir = 1
         else:
-            if self._dir > 0 and len(self._str) - self._pos == output.WIDTH:
+            if self._dir > 0 and len(self._str) - self._pos == WIDTH:
                 self._dir = -1
             elif self._dir < 0 and self._pos == 0:
                 self._dir = 1
@@ -55,18 +57,18 @@ class Line(object):
 
     def __str__(self):
         if self._overridden:
-            return self._override.center(output.WIDTH)
+            return self._override.center(WIDTH)
 
-        if len(self._str) == output.WIDTH:
+        if len(self._str) == WIDTH:
             return self._str
 
-        if len(self._str) < output.WIDTH:
+        if len(self._str) < WIDTH:
             if not SCROLL_SHORT:
-                return self._str.center(output.WIDTH)
+                return self._str.center(WIDTH)
             line = "".ljust(self._pos) + self._str
-            return line.ljust(output.WIDTH)
+            return line.ljust(WIDTH)
 
-        return self._str[self._pos:self._pos + output.WIDTH]
+        return self._str[self._pos:self._pos + WIDTH]
 
 class Display(OutputDevice):
     def __init__(self):
@@ -133,6 +135,7 @@ class Display(OutputDevice):
         self._update()
 
 output = Display()
+output.color(BLUE)
 client = MPDClient()
 
 def main():
