@@ -11,7 +11,6 @@ HOST = 'officepi'
 PORT = '6600'
 PASSWORD = False
 
-WIDTH = 16
 SCROLL_TIME = 1
 SCROLL_SHORT = False
 
@@ -35,17 +34,17 @@ class Line(object):
 
         self._pos = self._pos + self._dir
 
-        if len(self._str) == WIDTH:
+        if len(self._str) == output.WIDTH:
             self._dir = 0
         elif self._dir == 0:
             self._dir = 1
-        elif len(self._str) < WIDTH:
-            if self._dir > 0 and (len(self._str) + self._pos) == WIDTH:
+        elif len(self._str) < output.WIDTH:
+            if self._dir > 0 and (len(self._str) + self._pos) == output.WIDTH:
                 self._dir = -1
             elif self._dir < 0 and self._pos == 0:
                 self._dir = 1
         else:
-            if self._dir > 0 and len(self._str) - self._pos == WIDTH:
+            if self._dir > 0 and len(self._str) - self._pos == output.WIDTH:
                 self._dir = -1
             elif self._dir < 0 and self._pos == 0:
                 self._dir = 1
@@ -56,18 +55,18 @@ class Line(object):
 
     def __str__(self):
         if self._overridden:
-            return self._override.center(WIDTH)
+            return self._override.center(output.WIDTH)
 
-        if len(self._str) == WIDTH:
+        if len(self._str) == output.WIDTH:
             return self._str
 
-        if len(self._str) < WIDTH:
+        if len(self._str) < output.WIDTH:
             if not SCROLL_SHORT:
-                return self._str.center(WIDTH)
+                return self._str.center(output.WIDTH)
             line = "".ljust(self._pos) + self._str
-            return line.ljust(WIDTH)
+            return line.ljust(output.WIDTH)
 
-        return self._str[self._pos:self._pos + WIDTH]
+        return self._str[self._pos:self._pos + output.WIDTH]
 
 class Display(OutputDevice):
     def __init__(self):
@@ -100,7 +99,7 @@ class Display(OutputDevice):
         self._timer = Timer(SCROLL_TIME, self._update_display)
         self._timer.start()
 
-        self.display(str(self._line1), str(self._line2))
+        self.display(self._line1, self._line2)
 
     def _update(self):
         line1 = self._song["title"]

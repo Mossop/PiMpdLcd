@@ -204,6 +204,8 @@ else:
             self.set_title("")
 
 class OutputDevice(Console):
+    WIDTH = 16
+
     def __init__(self):
         Console.__init__(self, sys.stdout)
         self.set_color(self.WHITE)
@@ -232,23 +234,16 @@ class OutputDevice(Console):
         if not self.active:
             self.on()
 
-        line1 = line1[:16]
-        line2 = line2[:16]
-
         self.go_up(3)
         self.go_right(1)
         self.set_color(self.RED)
         if line1 is not None:
-            while len(line1) < 16:
-                line1 = line1 + " "
-            print(line1)
+            print(str(line1)[:self.WIDTH].ljust(self.WIDTH))
             self.go_right(1)
         else:
             self.go_down(1)
         if line2 is not None:
-            while len(line2) < 16:
-                line2 = line2 + " "
-            print(line2)
+            print(str(line2)[:self.WIDTH].ljust(self.WIDTH))
             self.go_right(1)
         else:
             self.go_down(1)
