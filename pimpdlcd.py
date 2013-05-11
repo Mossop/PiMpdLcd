@@ -186,6 +186,8 @@ class Monitor(object):
                 elif button == RIGHT:
                     self.client.next()
         except:
+            import traceback
+            traceback.print_exc()
             pass
 
         self.polltimer = Timer(POLL_BUTTON_TIME, self.poll_buttons)
@@ -201,6 +203,8 @@ class Monitor(object):
             self.statustimer = Timer(POLL_STATUS_TIME, self.update_status)
             self.statustimer.start()
         except:
+            import traceback
+            traceback.print_exc()
             self.polltimer.cancel()
             init_monitor()
 
@@ -208,6 +212,8 @@ def init_monitor():
     try:
         Monitor()
     except:
+        import traceback
+        traceback.print_exc()
         init_monitor()
 
 # Script starts here
