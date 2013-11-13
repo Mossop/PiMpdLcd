@@ -20,13 +20,14 @@ class Device(object):
         self._lock = threading.Lock()
 
     def get_buttons(self):
-        if not self.lcd:
-            return []
-
         pressed = []
         self._lock.acquire()
-        buttons = self.lcd.buttons()
-        self._lock.release()
+        try:
+            if not self.lcd:
+                return []
+            buttons = self.lcd.buttons()
+        finally:
+            self._lock.release()
         for button in BUTTONS:
             power = 1 << button
             if (buttons & power) == 0:
